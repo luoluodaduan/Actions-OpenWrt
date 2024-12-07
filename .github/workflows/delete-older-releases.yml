@@ -1,24 +1,40 @@
-name: delete-older-releases
+name: Build U-Boot AX6000
+
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * *" # runs at every 12AM UTC
-    
+
 jobs:
-  del_runs:
+  build:
+    name: build
     runs-on: ubuntu-latest
+
     steps:
-    
-    - name: 删除工作流
-      uses: GitRML/delete-workflow-runs@main
-      with:
-        retain_days: 7
-        keep_minimum_runs: 0
-    
-    - name: 删除旧的Releases
-      uses: dev-drprasad/delete-older-releases@master
-      with:
-        keep_latest: 3
-        delete_tags: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialization environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu build-essential flex bison libssl-dev device-tree-compiler qemu-user-static
+
+      - name: Clone source code
+        run: git clone --depth=1 https://github.com/hanwckf/bl-mt798x.git
+
+      - name: Build U-Boot AX6000
+        run: |
+          cd bl-mt798x
+          SOC=mt7986 BOARD=redmi_ax6000 MULTI_LAYOUT=1 ./build.sh
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Redmi_AX6000_U-Boot
+          path: bl-mt798x/output
+
+      - name: Delete Workflow
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          keep_minimum_runs: 1
+          retain_days: 1
